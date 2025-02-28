@@ -54,6 +54,21 @@ def extract_dharani_title_and_roman(文本文件路径, 输出文本文件路径
             # 提取标题并清理
             title = title_match.group(0).replace('\n', ' ').strip()
             
+            # 处理标题中的多余空格，确保标题连续
+            title = re.sub(r'\s+', ' ', title)  # 将多个空格替换为单个空格
+            # 特别处理标题中的关键词之间的空格，如"止 雨"变为"止雨"
+            title = re.sub(r'([\u4e00-\u9fff])\s+([\u4e00-\u9fff])', r'\1\2', title)
+            
+            # 检查标题是否以"陀罗尼"或"真言"结尾
+            if not re.search(r'(陀罗尼|真言)(?:\s*\([^)]+\))*\s*卍?$', title):
+                # 检查标题是否包含"陀"字
+                if '陀' in title and not re.search(r'陀罗尼', title):
+                    # 如果包含"陀"字但不完整，补全为"陀罗尼"
+                    title = re.sub(r'陀\s*$', '陀罗尼', title)
+                # 如果标题末尾没有适当的结尾，添加"陀罗尼"
+                if not re.search(r'(陀罗尼|真言)(?:\s*\([^)]+\))*\s*卍?$', title):
+                    title += "陀罗尼"
+            
             # 获取标题后的内容
             remaining_content = block_content[title_match.end():]
             
@@ -65,11 +80,29 @@ def extract_dharani_title_and_roman(文本文件路径, 输出文本文件路径
                     continue
                     
                 # 罗马拼音行检测：以字母开头，不包含中文，但可能包含数字和特殊字符
-                if re.match(r'^[a-zA-Z]', line) and not re.search(r'[\u4e00-\u9fff]', line) and not line.startswith('——') and not line.startswith('卍'):
+                if re.match(r'^[a-zA-Z]', line) and not re.search(r'[一-鿿]', line) and not line.startswith('——') and not line.startswith('卍'):
                     # 清理并规范化文本
                     cleaned_line = ' '.join(filter(None, line.split()))
                     # 移除数字（包括单独的数字和词后面的数字）
                     cleaned_line = re.sub(r'\s*\d+\s*', ' ', cleaned_line)
+                    # 移除行末的单个字母（如L、R等标记）
+                    cleaned_line = re.sub(r'\s+[A-Z]$', '', cleaned_line)
+                    # 移除末尾的单个字母（无空格）
+                    cleaned_line = re.sub(r'[A-Z]$', '', cleaned_line)
+                    cleaned_line = cleaned_line.strip()
+                    if cleaned_line:
+                        roman_words.append(cleaned_line)
+                # 增加对特殊字符开头但包含罗马拼音的行的处理
+                elif re.search(r'[a-zA-Z]', line) and not re.search(r'[一-鿿]', line) and not line.startswith('——'):
+                    # 提取行中的罗马拼音部分 - 扩展支持的特殊字符集
+                    roman_part = re.sub(r'[^a-zA-ZāĀīĪūŪṛṚṝṜḷḶḹḸṃṂḥḤṅṄñÑṭṬḍḌṇṆśŚṣṢ\s]', ' ', line)
+                    cleaned_line = ' '.join(filter(None, roman_part.split()))
+                    # 移除数字（包括单独的数字和词后面的数字）
+                    cleaned_line = re.sub(r'\s*\d+\s*', ' ', cleaned_line)
+                    # 移除行末的单个字母（如L、R等标记）
+                    cleaned_line = re.sub(r'\s+[A-Z]$', '', cleaned_line)
+                    # 移除末尾的单个字母（无空格）
+                    cleaned_line = re.sub(r'[A-Z]$', '', cleaned_line)
                     cleaned_line = cleaned_line.strip()
                     if cleaned_line:
                         roman_words.append(cleaned_line)
